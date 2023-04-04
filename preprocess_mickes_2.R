@@ -19,9 +19,12 @@ Exp3<-read_excel("EmpiricalData/MWWData/Data for David Kellen.xls", sheet = "Exp
 
 
 
+with(Exp1, table(response))
+with(Exp2, table(response))
+with(Exp3, table(response))
 
 
-Exp2n_twentypoint <- Exp2 %>% mutate(response = case_when(response %in% c(1:5) ~ 1,
+Exp2n_twentypoint <- Exp2 %>% mutate(response2 = case_when(response %in% c(1:5) ~ 1,
                                               response %in% c(6:10) ~ 2,
                                               response %in% c(11:15) ~ 3,
                                               response %in% c(16:20) ~ 4,
@@ -43,7 +46,7 @@ Exp2n_twentypoint <- Exp2 %>% mutate(response = case_when(response %in% c(1:5) ~
                                               response %in% c(96:99) ~ 20
                                               ))
 
-Exp2n_sixpoint <- Exp2 %>% mutate(response = case_when(response %in% c(1:16) ~ 1,
+Exp2n_sixpoint <- Exp2 %>% mutate(response2 = case_when(response %in% c(1:16) ~ 1,
                                                           response %in% c(17:32) ~ 2,
                                                           response %in% c(33:49) ~ 3,
                                                           response %in% c(50:66) ~ 4,
@@ -51,7 +54,7 @@ Exp2n_sixpoint <- Exp2 %>% mutate(response = case_when(response %in% c(1:16) ~ 1
                                                           response %in% c(83:99) ~ 6
 ))
 
-Exp1n_sixpoint <- Exp1 %>% mutate(response = case_when(response %in% c(1:4) ~ 1,
+Exp1n_sixpoint <- Exp1 %>% mutate(response2 = case_when(response %in% c(1:4) ~ 1,
                                                        response %in% c(5:7) ~ 2,
                                                        response %in% c(8:10) ~ 3,
                                                        response %in% c(11:13) ~ 4,
@@ -59,17 +62,44 @@ Exp1n_sixpoint <- Exp1 %>% mutate(response = case_when(response %in% c(1:4) ~ 1,
                                                        response %in% c(17:20) ~ 6
 ))
 
-MWW2007 <- bind_rows(Exp1n_sixpoint,Exp2n_sixpoint,Exp3) %>%
+Exp3$response2 <- Exp3$response
+
+mww2007 <- bind_rows(Exp1n_sixpoint,Exp2n_sixpoint,Exp3) %>%
   mutate(oldnew = ifelse(oldnew=="y","Old","New")) %>%
-  filter(oldnew %in% c("Old","New"))
+  filter(oldnew %in% c("Old","New")) %>%
+  filter(!is.na(response2)) %>% ## remove 11 observations %>%
+  mutate(
+    exp = factor(exp),
+    id = factor(id),
+    oldnew = factor(oldnew, levels = c("Old", "New")),
+    response2 = factor(response2)
+  )
 
-saveRDS(MWW2007,"EmpiricalData/MWWData/MWW2007_sixpoint_preprocesseddata.rds")
 
-e2_6_p1 <- Exp2n_sixpoint %>%
-  filter(!is.na(oldnew) & !is.na(response)) %>%
+mww2007_6point <- mww2007 %>%
+  group_by(exp, id, oldnew, response2) %>%
+  count() %>%
+  ungroup() %>%
+  pivot_wider(id_cols = c(exp, id), names_from = c(oldnew, response2), values_from = n, values_fill = 0)
+
+
+mww2007_20point <- mww2007 %>%
+  filter(exp == "MWW2007_e1") %>%
   group_by(exp, id, oldnew, response) %>%
   count() %>%
   ungroup() %>%
-  arrange(oldnew, n)
+  pivot_wider(id_cols = c(exp, id), names_from = c(oldnew, response), values_from = n, values_fill = 0)
+
+mww2007_99point <- mww2007 %>%
+  filter(exp == "MWW2007_e2") %>%
+  droplevels() %>%
+  mutate(response = factor(response, levels = 1:99)) %>%
+  group_by(exp, id, oldnew, response, .drop = FALSE) %>%
+  count() %>%
+  ungroup() %>%
+  pivot_wider(id_cols = c(exp, id), names_from = c(oldnew, response), values_from = n, values_fill = 0)
+
+
+save(mww2007, mww2007_6point, mww2007_20point, mww2007_99point, file = "EmpiricalData/MWWData/MWW2007_preprocesseddata.rds")
 
 

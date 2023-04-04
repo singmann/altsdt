@@ -158,14 +158,14 @@ optfunction <- function(model, data_list, par){
 }
 
 
-gaussian_uvsdt_opt <- function(data_list,par,predictorLL){
-
-
+gaussian_uvsdt_opt2 <- function(data_list,par,predictorLL){
   d     <- as.numeric(par[1])
   sigo  <- as.numeric(par[2])
-  c     <- cumsum(as.numeric(c(par[3:length(par)])))
+  start_crit <- as.numeric(par[3])
+  crit_dist <- as.numeric(par[4])
+  #c     <- cumsum(as.numeric(c(par[3:length(par)])))
   sign  <- 1
-  I <- c(-Inf,c,Inf) # put criteria into larger array
+  I <- c(-Inf,rep(start_crit, 5) + seq(from = 0, to = 5, by = 1)*crit_dist,Inf) # put criteria into larger array
 
   # Likelihood of every trial
   # New items
@@ -180,8 +180,6 @@ gaussian_uvsdt_opt <- function(data_list,par,predictorLL){
 
     pOlikJ[i] <- pnorm(I[i+1],mean=d,sd=sigo)-pnorm(I[i],mean=d,sd=sigo)
   }
-
-
 
   if(predictorLL == "LL"){
 
@@ -202,9 +200,50 @@ gaussian_uvsdt_opt <- function(data_list,par,predictorLL){
   } else {
     return(c(pNlikJ,pOlikJ))
   }
-
-
 }
+
+gaussian_uvsdt_opt <- function(data_list,par,predictorLL){
+  d     <- as.numeric(par[1])
+  sigo  <- as.numeric(par[2])
+  c     <- cumsum(as.numeric(c(par[3:length(par)])))
+  sign  <- 1
+  I <- c(-Inf,c,Inf) # put criteria into larger array
+
+  # Likelihood of every trial
+  # New items
+  pNlikJ <- vector()
+  for (i in 1:(length(c)+1)){
+    pNlikJ[i] <- pnorm(I[i+1],mean=0,sd=sign)-pnorm(I[i],mean=0,sd=sign)
+  }
+
+  # Old items
+  pOlikJ <- vector()
+  for (i in 1:(length(c)+1)){
+
+    pOlikJ[i] <- pnorm(I[i+1],mean=d,sd=sigo)-pnorm(I[i],mean=d,sd=sigo)
+  }
+
+  if(predictorLL == "LL"){
+
+    DataN <- data_list$New
+    DataO <- data_list$Old
+
+    NlikJ <- DataN * log(pNlikJ)
+    OlikJ <- DataO * log(pOlikJ)
+
+
+    llk <- sum(c(NlikJ,OlikJ))
+
+    if (is.na(llk)) llk <- -1e10
+    if (llk == -Inf) llk <- -1e10
+
+    return(llk)
+
+  } else {
+    return(c(pNlikJ,pOlikJ))
+  }
+}
+
 gumbel_evsdt_opt <- function(data_list,par,predictorLL){
 
   d     <- as.numeric(par[1])
